@@ -1,377 +1,333 @@
-document.addEventListener('DOMContentLoaded', () => {
-
-    // --- Mock Data ---
-    const MOCK_USERS = [
-        { email: 'user1@cmlre.gov', role: 'Researcher', lastLogin: '2h ago', analyses: 128, status: 'Active' },
-        { email: 'user2@cmlre.gov', role: 'Admin', lastLogin: '1d ago', analyses: 42, status: 'Active' },
-        { email: 'user3@cmlre.gov', role: 'Researcher', lastLogin: '5d ago', analyses: 7, status: 'Suspended' },
-        { email: 'user4@partner.org', role: 'Collaborator', lastLogin: '3h ago', analyses: 215, status: 'Active' },
-        { email: 'user5@cmlre.gov', role: 'Researcher', lastLogin: '1m ago', analyses: 1, status: 'Pending' },
-        { email: 'user6@new.net', role: 'Collaborator', lastLogin: '5m ago', analyses: 0, status: 'Pending' }
-    ];
-
-    // --- Element References ---
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const approvalListContainer = document.getElementById('approval-list');
-    const userTableBody = document.getElementById('user-table-body');
-    const userSearchInput = document.getElementById('user-search');
-    const selectAllUsersCheckbox = document.getElementById('select-all-users');
-    const modal = document.getElementById('confirmation-modal');
-    const modalText = document.getElementById('modal-text');
-    const modalCancel = document.getElementById('modal-cancel');
-    const modalConfirm = document.getElementById('modal-confirm');
-    const logoutBtn = document.getElementById('logout-btn');
-    const exportUsersBtn = document.getElementById('export-users-btn');
-    const promoteModelBtn = document.getElementById('promote-model-btn');
-    const notificationsBtn = document.getElementById('notifications-btn');
-    const profileBtn = document.getElementById('profile-btn');
-    const sidebarNav = document.getElementById('sidebar-nav');
-    const breadcrumbActive = document.getElementById('breadcrumb-active');
-    const dashboardView = document.getElementById('dashboard-view');
-    const settingsView = document.getElementById('settings-view');
-    const mainContent = document.getElementById('main-content');
-
-    // System Settings buttons
-    const changePasswordBtn = document.getElementById('change-password-btn');
-    const deleteAccountBtn = document.getElementById('delete-account-btn');
-
-    let onConfirmCallback = null;
-
-    // --- Modal Logic ---
-    const showModal = (text, onConfirm) => {
-        modalText.textContent = text;
-        onConfirmCallback = onConfirm;
-        modal.classList.remove('hidden');
-    };
-
-    const hideModal = () => {
-        modal.classList.add('hidden');
-        onConfirmCallback = null;
-    };
-    
-    modalConfirm.addEventListener('click', () => {
-        if (onConfirmCallback) {
-            onConfirmCallback();
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-Line // System Administration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* YOUR CSS IS UNCHANGED */
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #f1f5f9; /* A slightly different gray for admin background */
+            color: #1e293b;
+            background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+            background-size: 25px 25px;
         }
-        hideModal();
-    });
-    modalCancel.addEventListener('click', hideModal);
-
-    // --- Header Button Functionality ---
-    logoutBtn.addEventListener('click', () => {
-        showModal('Are you sure you want to log out?', () => {
-            console.log('Logging out...');
-            window.location.href = './index.html';
-        });
-    });
-    
-    notificationsBtn.addEventListener('click', () => alert('Notifications:\n- New user registered\n- Analysis batch #123 complete'));
-    profileBtn.addEventListener('click', () => alert('Admin Profile:\n- View Profile\n- Settings\n- API Keys'));
-
-    // --- Sidebar Navigation ---
-    sidebarNav.addEventListener('click', (e) => {
-        e.preventDefault();
-        const link = e.target.closest('a');
-        if (!link) return;
-
-        const targetId = link.getAttribute('href');
-
-        // Update active styles
-        sidebarNav.querySelectorAll('a').forEach(l => {
-            l.classList.remove('text-white', 'bg-sky-500', 'shadow');
-            l.classList.add('text-slate-600', 'hover:bg-slate-200');
-        });
-        link.classList.add('text-white', 'bg-sky-500', 'shadow');
-        link.classList.remove('text-slate-600', 'hover:bg-slate-200');
-        
-        // Update breadcrumb
-        breadcrumbActive.textContent = link.querySelector('span').textContent;
-
-        // View/Section Switching
-        if (targetId === '#settings') {
-            dashboardView.classList.add('hidden');
-            settingsView.classList.remove('hidden');
-            // Animate the settings view in
-            setTimeout(() => settingsView.querySelector('.reveal')?.classList.add('visible'), 50);
-
-        } else {
-            dashboardView.classList.remove('hidden');
-            settingsView.classList.add('hidden');
-            const targetSection = document.getElementById(targetId.substring(1) + '-section');
-            if (targetSection) {
-                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+        .card {
+            background-color: rgba(255,255,255,0.8);
+            border: 1px solid #e2e8f0;
+            backdrop-filter: blur(16px);
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
         }
-        
-        // Close sidebar on mobile after clicking a link
-        if (window.innerWidth < 768) {
-            sidebar.classList.add('-translate-x-full');
+        .btn-primary {
+            background-color: #0ea5e9;
+            color: #ffffff;
+            transition: all 0.3s ease;
+            border-radius: 0.375rem;
+            font-weight: 600;
         }
-    });
-
-
-    // --- Sidebar Toggle for Mobile ---
-    sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('-translate-x-full');
-    });
-    
-    // --- Skeleton Loading Simulation ---
-    const showSkeletons = (show) => {
-        const skeletons = ['api-status', 'active-users', 'queue', 'accuracy'];
-        skeletons.forEach(id => {
-            document.getElementById(`${id}-skeleton`).style.display = show ? 'block' : 'none';
-            document.getElementById(`${id}-content`).style.display = show ? 'none' : 'block';
-        });
-    };
-
-    // --- User Table & Approval Logic ---
-    const renderApprovalList = () => {
-        const pendingUsers = MOCK_USERS.filter(user => user.status === 'Pending');
-        if (pendingUsers.length === 0) {
-            approvalListContainer.innerHTML = `<p class="text-sm text-slate-500">No new registrations requiring approval.</p>`;
-            return;
+        .btn-primary:hover:not(:disabled) {
+            background-color: #38bdf8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
-        approvalListContainer.innerHTML = pendingUsers.map(user => `
-            <div class="flex items-center justify-between bg-slate-100 p-3 rounded-md border border-slate-200">
-                <div>
-                    <p class="text-sm font-semibold text-slate-800">${user.email}</p>
-                    <p class="text-xs text-slate-500">Role: ${user.role}</p>
-                </div>
-                <div class="flex space-x-2">
-                    <button data-action="approve" data-email="${user.email}" class="btn-secondary text-xs px-3 py-1 !text-green-600 !border-green-300 hover:!bg-green-100">Approve</button>
-                    <button data-action="deny" data-email="${user.email}" class="btn-secondary text-xs px-3 py-1 !text-red-600 !border-red-300 hover:!bg-red-100">Deny</button>
-                </div>
+        .btn-primary:disabled {
+            background-color: #e2e8f0;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #f1f5f9;
+            color: #0ea5e9;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            border-radius: 0.375rem;
+            font-weight: 600;
+        }
+        .btn-secondary:hover { background-color: #e2e8f0; }
+        .btn-danger { background-color: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 0.375rem; font-weight: 600; }
+        .btn-danger:hover { background-color: #fecaca; }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+        .skeleton {
+            background-color: #e2e8f0;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #0ea5e9;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0ea5e9;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 bg-slate-50/80 backdrop-blur-md border-r border-slate-200 flex-shrink-0 transition-all duration-300 ease-in-out -translate-x-full md:translate-x-0">
+            <div class="px-6 py-4 border-b border-slate-200">
+                <h1 class="text-xl font-bold text-slate-900 tracking-wider">Bio-Line</h1>
             </div>
-        `).join('');
-    };
+            <nav id="sidebar-nav" class="p-4 space-y-2">
+                <a href="#dashboard" class="flex items-center px-4 py-2 text-sm font-semibold text-white bg-sky-500 rounded-md shadow">
+                     <svg class="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h3M18 12h3M12 3v3M12 18v3M5.6 5.6l2.2 2.2M16.2 16.2l2.2 2.2M5.6 18.4l2.2-2.2M16.2 7.8l2.2-2.2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#users" class="flex items-center px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-md">
+                     <svg class="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M8.5 3a4 4 0 100 8 4 4 0 000-8zM20 8v6M23 11h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    <span>User Management</span>
+                </a>
+                <a href="#monitor" class="flex items-center px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-md">
+                     <svg class="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    <span>Analysis Monitor</span>
+                </a>
+                <a href="#performance" class="flex items-center px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-md">
+                     <svg class="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    <span>Model Performance</span>
+                </a>
+                 <a href="#settings" class="flex items-center px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-md">
+                     <svg class="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    <span>System Settings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <header class="bg-slate-50/80 backdrop-blur-md border-b border-slate-200 flex-shrink-0">
+                <div class="px-6 py-3 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <button id="sidebar-toggle" class="md:hidden mr-4 text-slate-500 hover:text-slate-900">
+                            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        </button>
+                        <h2 class="text-lg font-bold text-slate-800 tracking-wider font-mono">SYSTEM ADMINISTRATION</h2>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="notifications-btn" class="text-slate-500 hover:text-sky-500 relative">
+                             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                             <span class="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-slate-50"></span>
+                        </button>
+                        <div class="relative">
+                            <button id="profile-btn" class="flex items-center space-x-2 text-sm text-slate-600 hover:text-sky-500">
+                                <img src="https://placehold.co/32x32/e2e8f0/334155?text=A" alt="Admin" class="h-8 w-8 rounded-full border-2 border-slate-300">
+                                <span>Admin</span>
+                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                            </button>
+                        </div>
+                         <button id="logout-btn" class="text-slate-500 hover:text-sky-500 text-xs uppercase font-semibold">Logout</button>
+                    </div>
+                </div>
+                 <div class="px-6 pb-3 text-xs text-slate-500 font-mono">
+                     <span>Admin</span> / <span id="breadcrumb-active">Dashboard</span>
+                 </div>
+            </header>
+
+            <main id="main-content" class="flex-1 overflow-y-auto p-6">
+                <div id="dashboard-view" class="space-y-8">
+                    <section id="dashboard-section">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div class="card p-5 reveal">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-sm font-medium text-slate-500 uppercase tracking-wider">API Status</h3>
+                                    <span class="h-3 w-3 bg-green-500 rounded-full" title="Operational"></span>
+                                </div>
+                                <div id="api-status-content" class="mt-4">
+                                   <p class="text-3xl font-semibold text-slate-800">12ms</p>
+                                   <p class="text-xs text-green-600">99.99% Uptime</p>
+                                </div>
+                                 <div id="api-status-skeleton" class="hidden mt-4 space-y-2">
+                                     <div class="h-8 w-1/2 skeleton rounded"></div>
+                                     <div class="h-4 w-1/3 skeleton rounded"></div>
+                                 </div>
+                            </div>
+                            <div class="card p-5 reveal" style="transition-delay: 100ms;">
+                                 <h3 class="text-sm font-medium text-slate-500 uppercase tracking-wider">Active Users</h3>
+                                 <div id="active-users-content" class="mt-4">
+                                     <p class="text-3xl font-semibold text-slate-800">1,428</p>
+                                     <p class="text-xs text-green-600">+5.2% last 24h</p>
+                                 </div>
+                                 <div id="active-users-skeleton" class="hidden mt-4 space-y-2">
+                                     <div class="h-8 w-1/2 skeleton rounded"></div>
+                                     <div class="h-4 w-1/3 skeleton rounded"></div>
+                                 </div>
+                            </div>
+                             <div class="card p-5 reveal" style="transition-delay: 200ms;">
+                                 <h3 class="text-sm font-medium text-slate-500 uppercase tracking-wider">Processing Queue</h3>
+                                 <div id="queue-content" class="mt-4">
+                                     <p class="text-3xl font-semibold text-slate-800">87</p>
+                                     <p class="text-xs text-amber-600">~15 min wait</p>
+                                 </div>
+                                <div id="queue-skeleton" class="hidden mt-4 space-y-2">
+                                     <div class="h-8 w-1/2 skeleton rounded"></div>
+                                     <div class="h-4 w-1/3 skeleton rounded"></div>
+                                 </div>
+                            </div>
+                             <div class="card p-5 reveal" style="transition-delay: 300ms;">
+                                <h3 class="text-sm font-medium text-slate-500 uppercase tracking-wider">Model Accuracy</h3>
+                                <div id="accuracy-content" class="mt-4">
+                                     <p class="text-3xl font-semibold text-slate-800">93.8%</p>
+                                     <p class="text-xs text-slate-500 font-mono">v3.0.0-BERT (24k Seq / 35 Taxa)</p>
+                                 </div>
+                                 <div id="accuracy-skeleton" class="hidden mt-4 space-y-2">
+                                     <div class="h-8 w-1/2 skeleton rounded"></div>
+                                     <div class="h-4 w-1/3 skeleton rounded"></div>
+                                 </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section id="users-section" class="lg:col-span-2 reveal" style="transition-delay: 400ms;">
+                        <div class="card">
+                            <div class="p-5 border-b border-slate-200">
+                                <h4 class="text-base font-semibold text-slate-800 tracking-wider mb-4">New Registration Approvals</h4>
+                                <div id="approval-list" class="space-y-3"></div>
+                            </div>
+                            <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+                                <h3 class="text-base font-semibold text-slate-800 tracking-wider">User Management</h3>
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" id="user-search" placeholder="Search users..." class="bg-slate-100 border border-slate-300 text-xs p-2 rounded-md focus:ring-1 focus:ring-sky-500 outline-none">
+                                    <button id="export-users-btn" class="btn-secondary text-xs px-3 py-2">Export</button>
+                                </div>
+                            </div>
+                            <div class="p-5">
+                                <table class="w-full text-left text-sm">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 text-xs text-slate-500 uppercase">
+                                            <th class="py-2"><input type="checkbox" id="select-all-users" class="bg-white border-slate-300 text-sky-500 focus:ring-sky-500"></th>
+                                            <th class="py-2">Email</th>
+                                            <th class="py-2">Role</th>
+                                            <th class="py-2">Last Login</th>
+                                            <th class="py-2 text-right">Analyses</th>
+                                            <th class="py-2 text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="user-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section id="monitor-section" class="reveal" style="transition-delay: 500ms;">
+                        <div class="card">
+                             <div class="p-5 border-b border-slate-200">
+                                 <h3 class="text-base font-semibold text-slate-800 tracking-wider">Analysis Volume</h3>
+                             </div>
+                            <div class="p-5 relative h-64">
+                                <canvas id="analysisVolumeChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="performance-section" class="reveal" style="transition-delay: 600ms;">
+                         <div class="card">
+                            <div class="p-5 border-b border-slate-200">
+                                <h3 class="text-base font-semibold text-slate-800 tracking-wider">Model Performance</h3>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200">
+                                 <div class="p-5 bg-white">
+                                     <h4 class="text-sm font-medium text-slate-500 mb-4">Accuracy Trend</h4>
+                                     <div class="relative h-40">
+                                         <canvas id="accuracyTrendChart"></canvas>
+                                     </div>
+                                 </div>
+                                 <div class="p-5 bg-white">
+                                     <h4 class="text-sm font-medium text-slate-500 mb-4">Confidence Distribution</h4>
+                                      <div class="relative h-40">
+                                         <canvas id="confidenceDistChart"></canvas>
+                                      </div>
+                                 </div>
+                                 <div class="p-5 bg-white">
+                                    <h4 class="text-sm font-medium text-slate-500 mb-4">A/B Test: v3.0 vs v2.0</h4>
+                                    <div class="space-y-4 text-xs">
+                                        <p><strong>Accuracy:</strong> <span class="text-green-600 font-semibold">+3.1%</span></p>
+                                        <p><strong>Taxa Coverage:</strong> <span class="text-green-600 font-semibold">+19</span></p>
+                                        <p><strong>Kingdoms:</strong> <span class="text-green-600 font-semibold">+2</span></p>
+                                        <button id="promote-model-btn" class="btn-primary w-full text-xs py-2 mt-4">Promote v3.0</button>
+                                    </div>
+                                 </div>
+                                 <div class="p-5 bg-white">
+                                    <h4 class="text-sm font-medium text-slate-500 mb-4">Deployment Timeline</h4>
+                                    <ul class="text-xs space-y-3">
+                                          <li class="flex items-start"><span class="text-green-500 mr-2 mt-1">●</span><div><strong class="text-slate-700">v3.0.0-BERT (24k Seq / 35 Taxa)</strong><span class="block text-slate-500">Active - Sep 12, 2025</span></div></li>
+                                          <li class="flex items-start"><span class="text-slate-400 mr-2 mt-1">●</span><div><strong class="text-slate-700">v2.0.0-BERT (11k Seq / 16 Taxa)</strong><span class="block text-slate-500">Aug 15, 2025</span></div></li>
+                                          <li class="flex items-start"><span class="text-slate-400 mr-2 mt-1">●</span><div><strong class="text-slate-700">v1.0.0-BERT (5k Seq / 9 Taxa)</strong><span class="block text-slate-500">Jul 01, 2025</span></div></li>
+                                    </ul>
+                                 </div>
+                            </div>
+                         </div>
+                    </section>
+                </div>
+                
+                <div id="settings-view" class="hidden">
+                    <section id="settings-section" class="reveal">
+                        <div class="card">
+                           <div class="p-5 border-b border-slate-200">
+                                <h3 class="text-base font-semibold text-slate-800 tracking-wider">System Settings</h3>
+                            </div>
+                            <div class="p-5 space-y-8">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-slate-600 mb-4 uppercase tracking-wider">Notification Preferences</h4>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-slate-600">Email on analysis completion</span>
+                                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                                <input type="checkbox" name="toggle" id="email-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" checked/>
+                                                <label for="email-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                                            </div>
+                                        </div>
+                                         <div class="flex items-center justify-between">
+                                            <span class="text-sm text-slate-600">Email on new user registration</span>
+                                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                                <input type="checkbox" name="toggle" id="user-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                                <label for="user-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                     <h4 class="text-sm font-semibold text-slate-600 mb-4 uppercase tracking-wider">Account</h4>
+                                     <div class="flex space-x-4">
+                                         <button id="change-password-btn" class="btn-secondary text-xs px-4 py-2">Change Password</button>
+                                         <button id="delete-account-btn" class="btn-danger text-xs px-4 py-2">Delete Account</button>
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
     
-    const renderUserTable = (users) => {
-        const approvedUsers = users.filter(user => user.status !== 'Pending');
-        userTableBody.innerHTML = approvedUsers.map(user => `
-            <tr class="border-b border-slate-200 hover:bg-slate-100">
-                <td class="py-3 px-2"><input type="checkbox" class="user-checkbox bg-white border-slate-300 text-sky-500 focus:ring-sky-500 rounded-sm"></td>
-                <td class="py-3 font-medium text-slate-700">${user.email}</td>
-                <td class="py-3 text-slate-500">${user.role}</td>
-                <td class="py-3 text-slate-500">${user.lastLogin}</td>
-                <td class="py-3 text-right text-slate-500">${user.analyses}</td>
-                <td class="py-3 text-center">
-                    <span class="px-2 py-1 text-xs rounded-full ${
-                        user.status === 'Active' ? 'bg-green-100 text-green-800' :
-                        user.status === 'Suspended' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                    }">${user.status}</span>
-                </td>
-            </tr>
-        `).join('');
-    };
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="card w-full max-w-sm p-6 text-center">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Confirm Action</h3>
+            <p id="modal-text" class="text-slate-600 mb-6">Are you sure you want to proceed?</p>
+            <div class="flex justify-end space-x-4">
+                <button id="modal-cancel" class="btn-secondary text-sm px-4 py-2">Cancel</button>
+                <button id="modal-confirm" class="btn-danger text-sm px-4 py-2">Confirm</button>
+            </div>
+        </div>
+    </div>
 
-    approvalListContainer.addEventListener('click', (e) => {
-        const button = e.target.closest('button');
-        if (!button) return;
-
-        const action = button.dataset.action;
-        const email = button.dataset.email;
-        const userIndex = MOCK_USERS.findIndex(user => user.email === email);
-
-        if (userIndex === -1) return;
-
-        if (action === 'approve') {
-            MOCK_USERS[userIndex].status = 'Active';
-        } else if (action === 'deny') {
-            MOCK_USERS.splice(userIndex, 1);
-        }
-
-        renderApprovalList();
-        renderUserTable(MOCK_USERS);
-    });
-
-    userSearchInput.addEventListener('keyup', () => {
-        const searchTerm = userSearchInput.value.toLowerCase();
-        const filteredUsers = MOCK_USERS.filter(user => user.email.toLowerCase().includes(searchTerm));
-        renderUserTable(filteredUsers);
-    });
-
-    selectAllUsersCheckbox.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        userTableBody.querySelectorAll('.user-checkbox').forEach(checkbox => {
-            checkbox.checked = isChecked;
-        });
-    });
-    
-    userTableBody.addEventListener('change', (e) => {
-        if (e.target.classList.contains('user-checkbox')) {
-            const allCheckboxes = userTableBody.querySelectorAll('.user-checkbox');
-            const allChecked = Array.from(allCheckboxes).every(checkbox => checkbox.checked);
-            selectAllUsersCheckbox.checked = allChecked;
-        }
-    });
-    
-    exportUsersBtn.addEventListener('click', () => {
-        showModal('Export all users to CSV?', () => {
-            const headers = Object.keys(MOCK_USERS[0]).join(',');
-            const csv = MOCK_USERS.map(row => Object.values(row).join(',')).join('\n');
-            const csvContent = `${headers}\n${csv}`;
-            console.log("--- EXPORTING CSV DATA ---");
-            console.log(csvContent);
-            alert('User data exported to browser console.');
-        });
-    });
-    
-    // --- Model Performance ---
-    promoteModelBtn.addEventListener('click', () => {
-        showModal('Are you sure you want to promote model v3.0 to production?', () => {
-            console.log('Promoting model v3.0...');
-            promoteModelBtn.textContent = 'PROMOTED';
-            promoteModelBtn.disabled = true;
-            alert('Model v3.0 has been promoted.');
-        });
-    });
-
-    // --- System Settings Functionality ---
-    changePasswordBtn.addEventListener('click', () => {
-        alert('Password change screen would appear here.');
-    });
-
-    deleteAccountBtn.addEventListener('click', () => {
-        showModal('This action is irreversible and will delete all associated data. Are you sure?', () => {
-            console.log('Deleting account...');
-            alert('Account has been deleted (simulated).');
-        });
-    });
-
-    // --- Chart.js Setup ---
-    Chart.defaults.font.family = "'Manrope', sans-serif";
-    Chart.defaults.color = '#64748b'; // slate-500
-
-    const createChartConfig = (type, data, options) => ({
-        type,
-        data,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { 
-                legend: { display: false },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(15, 23, 42, 0.85)', // slate-900
-                    titleFont: { family: "'Roboto Mono', monospace" },
-                    bodyFont: { family: "'Manrope', sans-serif" },
-                    padding: 12,
-                    cornerRadius: 4,
-                    borderColor: '#334155', // slate-700
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) { label += ': '; }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y;
-                                if (context.chart.canvas.id === 'accuracyTrendChart') {
-                                     label += '%';
-                                }
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { font: { size: 10 } } },
-                x: { grid: { color: '#e2e8f0' }, ticks: { font: { size: 10 } } }
-            },
-            ...options
-        }
-    });
-
-    // Analysis Volume Chart
-    const analysisVolumeChart = new Chart(document.getElementById('analysisVolumeChart'), createChartConfig('line', {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{
-            label: 'Analyses',
-            data: [65, 59, 80, 81, 56, 55, 40],
-            fill: true,
-            borderColor: '#0ea5e9',
-            backgroundColor: (context) => {
-                const ctx = context.chart.ctx;
-                const gradient = ctx.createLinearGradient(0, 0, 0, context.chart.height);
-                gradient.addColorStop(0, 'rgba(14, 165, 233, 0.2)');
-                gradient.addColorStop(1, 'rgba(14, 165, 233, 0)');
-                return gradient;
-            },
-            tension: 0.4,
-            pointBackgroundColor: '#fff',
-            pointBorderColor: '#0ea5e9',
-            pointRadius: 4,
-            pointHoverRadius: 6,
-        }]
-    }, { plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } } } }));
-
-    // Accuracy Trend Chart
-    const accuracyTrendChart = new Chart(document.getElementById('accuracyTrendChart'), createChartConfig('line', {
-        labels: [['v1.0', '(9 Taxa)'], ['v2.0', '(16 Taxa)'], ['v3.0', '(35 Taxa)']],
-        datasets: [{ 
-            data: [86.4, 90.7, 93.8], 
-            borderColor: '#10b981', // emerald-500 
-            tension: 0.4,
-            fill: true,
-            backgroundColor: (context) => {
-                const ctx = context.chart.ctx;
-                const gradient = ctx.createLinearGradient(0, 0, 0, context.chart.height);
-                gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
-                gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-                return gradient;
-            },
-            pointBackgroundColor: '#fff',
-            pointBorderColor: '#10b981',
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            pointHoverBorderWidth: 2,
-        }]
-    }, { scales: { y: { min: 85, max: 95 } } }));
-
-    // Confidence Distribution Chart
-    const confidenceDistChart = new Chart(document.getElementById('confidenceDistChart'), createChartConfig('bar', {
-        labels: ['<90%', '90-95%', '95-98%', '>98%'],
-        datasets: [{ 
-            data: [12, 19, 52, 128], 
-            backgroundColor: 'rgba(14, 165, 233, 0.7)',
-            hoverBackgroundColor: 'rgba(56, 189, 248, 1)',
-            borderRadius: 4,
-        }]
-    }));
-
-
-    // --- WebSocket Simulation for real-time updates ---
-    setInterval(() => {
-        // Update overview cards
-        document.querySelector('#api-status-content p').textContent = `${Math.floor(Math.random() * 5) + 10}ms`;
-        const currentUserCount = parseInt(document.querySelector('#active-users-content p').textContent.replace(',', ''));
-        document.querySelector('#active-users-content p').textContent = (currentUserCount + Math.floor(Math.random() * 5 - 2)).toLocaleString();
-        document.querySelector('#queue-content p').textContent = Math.floor(Math.random() * 10) + 80;
-
-        // Update analysis chart
-        if(analysisVolumeChart.data.datasets[0].data.length > 20) {
-             analysisVolumeChart.data.datasets[0].data.shift();
-             analysisVolumeChart.data.labels.shift();
-        }
-        analysisVolumeChart.data.datasets[0].data.push(Math.floor(Math.random() * 50) + 40);
-        analysisVolumeChart.update('none');
-
-    }, 2500);
-    
-    // --- Initial Load ---
-    const initialLoad = () => {
-        showSkeletons(true);
-        setTimeout(() => {
-            renderApprovalList();
-            renderUserTable(MOCK_USERS);
-            showSkeletons(false);
-            document.querySelectorAll('#dashboard-view .reveal').forEach(el => {
-                el.classList.add('visible');
-            });
-        }, 1500);
-    };
-
-    initialLoad();
-
-});
+    <script src="./admin.js" defer></script>
+</body>
+</html>
